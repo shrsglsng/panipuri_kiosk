@@ -1,0 +1,34 @@
+#include <AccelStepper.h>
+
+const int motorPinPUL = 2;  // PUL+ pin connected to Arduino digital pin 2
+const int motorPinDIR = 3;  // DIR+ pin connected to Arduino digital pin 3
+const int sensorPin = 7;    // Sensor pin connected to Arduino digital pin 7
+const int ir=8;             //ir sensor
+
+AccelStepper myStepper(AccelStepper::DRIVER, motorPinPUL, motorPinDIR);
+
+void setup() {
+  pinMode(sensorPin, INPUT_PULLUP);  // Set sensor pin as input with pull-up resistor
+  pinMode(ir,INPUT_PULLUP);
+  myStepper.setMaxSpeed(2000);       // Set max speed
+  myStepper.setAcceleration(5000);   // Set acceleration
+}
+
+void loop() {
+  if (digitalRead(sensorPin) == HIGH &&digitalRead(ir)==LOW) {
+    // Sensor detected an obstacle, move forward
+    delay(2000); //start after 2 sec,if the puri is identfied and the catcher is in home position 
+    myStepper.moveTo(6300);           // Move 500 steps forward
+    myStepper.runToPosition();       // Run to the new position
+    delay(5000);                     // Wait for 3 seconds
+
+    // Move backward until the sensor detects high
+    myStepper.setSpeed(-2000);       // Set speed for moving backward
+    while (digitalRead(sensorPin) ==LOW) {
+      myStepper.runSpeed();          // Continue moving backward
+    }
+    myStepper.stop();                // Stop the motor once the sensor reads LOW
+    delay(3000);                     // Wait for 2 seconds
+  }
+  //delay(5000);
+}

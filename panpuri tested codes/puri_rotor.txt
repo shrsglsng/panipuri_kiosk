@@ -1,0 +1,41 @@
+#include <AccelStepper.h>
+
+const int sensor = 6;
+const int stepPin = 9;
+const int dirPin = 10;
+
+AccelStepper myStepper(AccelStepper::DRIVER, stepPin, dirPin);
+int motorRunning = 0;  // 0 = stopped, 1 = running
+int prevSensorState = LOW;  // Previous state of the sensor
+
+void setup() {
+  pinMode(sensor, INPUT_PULLUP);  // Set sensor pin as input with pull-up resistor
+  myStepper.setMaxSpeed(1000);       // Set max speed
+  myStepper.setAcceleration(500);    // Set acceleration
+}
+
+void loop() {
+  int currentSensorState = digitalRead(sensor);  // Read the current state of the sensor
+
+  // Check for a rising edge (sensor changes from LOW to HIGH)
+  if (currentSensorState == HIGH && prevSensorState == LOW) {
+    if (motorRunning == 0) {
+      motorRunning = 1;  // Start the motor
+      myStepper.setSpeed(2000);  // Set speed
+    } else {
+      motorRunning = 0;  // Stop the motor
+      myStepper.stop();
+      delay(5000);  // Wait for 3 seconds
+      motorRunning = 1;  // Start the motor again
+      myStepper.setSpeed(2000);  // Set speed again
+    }
+  }
+
+  // If the motor is supposed to be running, keep it running
+  if (motorRunning == 1) {
+    myStepper.runSpeed();  // Continuously move the motor at the set speed
+  }
+
+  // Update the previous sensor state
+  prevSensorState = currentSensorState;
+}

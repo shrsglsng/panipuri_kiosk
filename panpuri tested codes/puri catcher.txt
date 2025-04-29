@@ -1,0 +1,41 @@
+#include <AccelStepper.h>
+
+// Define stepper motor parameters
+const int motorPinPUL = 2;  // PUL+ pin connected to Arduino digital pin 2
+const int motorPinDIR = 3;  // DIR+ pin connected to Arduino digital pin 3
+const int motorPinENA = 4;  // ENA+ pin connected to Arduino digital pin 4 (optional)
+
+AccelStepper myStepper(AccelStepper::DRIVER, motorPinPUL, motorPinDIR);
+
+// Define the number of steps per revolution for your stepper motor
+const int stepsPerRevolution = 800;  // Example for a 1.8° step angle ( steps/rev)
+
+// Define the number of revolutions to move
+const float revolutionsToMove = 1.0;  // Example: move 2 revolutions
+
+void setup() {
+  pinMode(motorPinENA, OUTPUT);
+  
+  myStepper.setMaxSpeed(500);  // Set max speed
+  myStepper.setAcceleration(800);  // Set acceleration
+  digitalWrite(motorPinENA, LOW);  // Enable the driver
+}
+
+void loop() {
+  // Calculate the number of steps to move based on the number of revolutions
+  int stepsToMove = revolutionsToMove * stepsPerRevolution;
+
+  // Move the motor clockwise by the specified number of steps
+  myStepper.moveTo(stepsToMove);
+  while (myStepper.distanceToGo() != 0) {
+    myStepper.run();
+  }
+  delay(1000);  // Delay for 1 second
+
+  // Move the motor counterclockwise by the specified number of steps
+  myStepper.moveTo(-stepsToMove);
+  //while (myStepper.distanceToGo() != 0) {
+   // myStepper.run();
+ // }
+  //delay(1000);  // Delay for 1 second
+}

@@ -1,0 +1,43 @@
+#include <AccelStepper.h>
+
+const int motorPinPUL = 2;  // PUL+ pin connected to Arduino digital pin 2
+const int motorPinDIR = 3;  // DIR+ pin connected to Arduino digital pin 3
+const int sensorPin = 7;    // Sensor pin connected to Arduino digital pin 7
+const int ir = 8;           // IR sensor pin
+
+AccelStepper myStepper(AccelStepper::DRIVER, motorPinPUL, motorPinDIR);
+
+void setup() {
+  pinMode(sensorPin, INPUT_PULLUP);  // Set sensor pin as input with pull-up resistor
+  pinMode(ir, INPUT_PULLUP);         // Set IR sensor pin as input with pull-up resistor
+  myStepper.setMaxSpeed(2000);       // Set max speed
+  myStepper.setAcceleration(5000);   // Set acceleration
+}
+
+void checkIrSensorDelay() {
+  if (digitalRead(ir) == LOW) {
+    delay(2000); // Delay for 2 seconds after detecting IR
+  }
+}
+
+void loop() {
+  // Check IR sensor and add delay if needed
+  if (digitalRead(ir) == LOW) {
+    checkIrSensorDelay(); // Add 2-second delay if IR sensor is LOW
+  }
+
+  if (digitalRead(sensorPin) == HIGH && digitalRead(ir) == LOW) {
+    // Sensor detected an obstacle, move forward
+    myStepper.moveTo(6300);           // Move 6300 steps forward
+    myStepper.runToPosition();        // Run to the new position
+    delay(5000);                      // Wait for 5 seconds
+
+    // Move backward until the sensor detects high (home position)
+    myStepper.setSpeed(-2000);        // Set speed for moving backward
+    while (digitalRead(sensorPin) == LOW) {
+      myStepper.runSpeed();           // Continue moving backward
+    }
+    myStepper.stop();                 // Stop the motor once the sensor reads HIGH
+    delay(3000);                      // Wait for 3 seconds
+  }
+}
