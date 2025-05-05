@@ -19,6 +19,18 @@ void puri_2();
 void puri_3_to_5();
 void puri_6();
 
+void plate_cup_up();
+void plate_cup_down();
+void plate_vaccum_on();
+void plate_vaccum_off();
+void cup_dispense();
+
+void plate_cup_fwd_till_masala();
+void plate_cup_fwd_final();
+void plate_cup_bwd();
+void plate_rotate();
+void get_plate_cup();
+
 const int puri_catcher_step = 47; // catcher PUL+
 const int puri_catcher_dir = 46;  // catcher DIR+
 
@@ -54,12 +66,31 @@ const int onion = 10;
 const int channa = 7;
 const int sev = 6;
 
+const int plate_cup_vertical_home_sensor = A6; // LIZ
+const int plate_cup_vertical_step = 37;        // NBR step
+const int plate_cup_vertical_dir = 36;         // NBR dir
+
+const int plate_cup_horizontal_home_sensor = A7; // LID
+const int plate_cup_horizontal_step = 35;        // NPZ step
+const int plate_cup_horizontal_dir = 34;         // NPZ dir
+
+const int plate_vaccum = 5;        // FIG
+const int plate_detect_ir = A8;    // LIY
+const int cup_dispensor_motor = 4; // FIC
+const int cup_detect_ir = A11;     // LEX
+
+const int plate_rotor_step = 33; // NEX
+const int plate_rotor_dir = 32;
+
 AccelStepper puriCatcher(AccelStepper::DRIVER, puri_catcher_step, puri_catcher_dir);
 AccelStepper puriBarrel(AccelStepper::DRIVER, barrel_step, barrel_dir);
 AccelStepper catcherOpener1(AccelStepper::DRIVER, s_catcher_opener1_step, s_catcher_opener1_dir);
 AccelStepper catcherOpener2(AccelStepper::DRIVER, s_catcher_opener2_step, s_catcher_opener2_dir);
 AccelStepper puriConveyor(AccelStepper::DRIVER, conveyor_step, conveyor_dir);
 AccelStepper puriDrill(AccelStepper::DRIVER, drill_step, drill_dir);
+AccelStepper pcVertical(AccelStepper::DRIVER, plate_cup_vertical_step, plate_cup_vertical_dir);
+AccelStepper pcHorizontal(AccelStepper::DRIVER, plate_cup_horizontal_step, plate_cup_horizontal_dir);
+AccelStepper plateRotor(AccelStepper::DRIVER, plate_rotor_step, plate_rotor_dir);
 
 void setup()
 {
@@ -81,6 +112,14 @@ void setup()
   pinMode(channa, OUTPUT);
   pinMode(sev, OUTPUT);
 
+  pinMode(plate_cup_vertical_home_sensor, INPUT);
+  pinMode(plate_cup_horizontal_home_sensor, INPUT);
+
+  pinMode(plate_detect_ir, INPUT);
+  pinMode(cup_detect_ir, INPUT);
+  pinMode(plate_vaccum, OUTPUT);
+  pinMode(cup_dispensor_motor, OUTPUT);
+
   puriCatcher.setMaxSpeed(5000);     // Set max speed  puri catcher
   puriCatcher.setAcceleration(4000); // Set acceleration
 
@@ -90,17 +129,31 @@ void setup()
   catcherOpener1.setMaxSpeed(5000); // s_catcher_opener
   catcherOpener1.setAcceleration(3000);
 
+  catcherOpener2.setMaxSpeed(5000); // s_catcher_opener
+  catcherOpener2.setAcceleration(3000);
+
   puriConveyor.setMaxSpeed(5000);
   puriConveyor.setAcceleration(500);
 
   puriDrill.setMaxSpeed(5000);
   puriDrill.setAcceleration(3000);
+
+  pcVertical.setMaxSpeed(9000);
+  pcVertical.setAcceleration(5000);
+
+  pcHorizontal.setMaxSpeed(9000);
+  pcHorizontal.setAcceleration(5000);
+
+  plateRotor.setMaxSpeed(5000);
+  plateRotor.setAcceleration(3000);
 }
 
 void loop()
 {
 
   all_stepper_homing();
+  delay(100);
+  get_plate_cup();
   delay(100);
   puri_1();
   delay(100);
@@ -116,37 +169,35 @@ void loop()
   delay(2000);
 }
 
-/* setting all stepper to therir starting pos */
+/* setting all stepper to their starting pos... 2 action modular code can be homed by simple function call like push()-pull() */
 
 void all_stepper_homing()
 {
 
   /* puri pusher homing */
 
-  if (digitalRead(puri_catcher_home_sensor) == LOW)
-  {
-    puriCatcher.setSpeed(-2000); // Set speed for moving backward
-    while (digitalRead(puri_catcher_home_sensor) == LOW)
-    {
-      puriCatcher.runSpeed(); // Continue moving backward
-    }
-    puriCatcher.stop();
-    delay(500);
-    puriCatcher.setCurrentPosition(0); // Reset position for puriCatcher after homing
-  }
+  puri_pull();
 
   /* s_cathcher1 homing */
 
-  if (digitalRead(s_catcher_opener1_home_sensor) == LOW)
+  void s_catcher_close1();
+
+   /* s_catcher2_homing */
+
+  s_catcher_close2();
+
+  /* drill homing */
+
+  if (digitalRead(drill_home_sensor) == LOW)
   {
-    catcherOpener1.setSpeed(-4000);
-    while (digitalRead(s_catcher_opener1_home_sensor) == LOW)
+    puriDrill.setSpeed(-4000);
+    while (digitalRead(drill_home_sensor) == LOW)
     {
-      catcherOpener1.runSpeed();
+      puriDrill.runSpeed();
     }
-    catcherOpener1.stop();
+    puriDrill.stop();
     delay(200);
-    catcherOpener1.setCurrentPosition(0);
+    puriDrill.setCurrentPosition(0);
   }
 
   /* conveyor homing */
@@ -163,31 +214,12 @@ void all_stepper_homing()
     puriConveyor.setCurrentPosition(0);
   }
 
-  /* drill homing */
 
-  if(digitalRead(drill_home_sensor) == LOW){
-    puriDrill.setSpeed(-4000);
-    while(digitalRead(drill_home_sensor) == LOW){
-      puriDrill.runSpeed();
-    }
-    puriDrill.stop();
-    delay(200);
-    puriDrill.setCurrentPosition(0);
-  }
+  /* plate_cup homing */
 
-  /* s_catcher2_homing */
+  plate_cup_down();
+  plate_cup_bwd();
 
-  if (digitalRead(s_catcher_opener2_home_sensor) == LOW)
-  {
-    catcherOpener2.setSpeed(-4000);
-    while (digitalRead(s_catcher_opener2_home_sensor) == LOW)
-    {
-      catcherOpener2.runSpeed();
-    }
-    catcherOpener2.stop();
-    delay(200);
-    catcherOpener2.setCurrentPosition(0);
-  }
 
 }
 
@@ -228,7 +260,7 @@ void puri_push()
 void puri_pull()
 {
 
-   if (digitalRead(puri_catcher_home_sensor) == LOW)
+  if (digitalRead(puri_catcher_home_sensor) == LOW)
   {
     puriCatcher.setSpeed(-5000); // Set speed for moving backward
     while (digitalRead(puri_catcher_home_sensor) == LOW)
@@ -291,26 +323,30 @@ void conveyor()
 
   puriConveyor.setSpeed(4000);
 
-  while(digitalRead(conveyor_home_sensor) == HIGH){
+  while (digitalRead(conveyor_home_sensor) == HIGH)
+  {
     puriConveyor.runSpeed();
   }
 
-  while(digitalRead(conveyor_home_sensor) == LOW){
+  while (digitalRead(conveyor_home_sensor) == LOW)
+  {
     puriConveyor.runSpeed();
   }
 
   puriConveyor.stop();
   delay(200);
   puriConveyor.setCurrentPosition(0);
-  
 }
 
-void drill(){
+void drill()
+{
 
-  if(digitalRead(drill_home_sensor) == HIGH){
+  if (digitalRead(drill_home_sensor) == HIGH)
+  {
     digitalWrite(drill_motor, HIGH);
     puriDrill.moveTo(7000);
-    while(puriDrill.distanceToGo() != 0){
+    while (puriDrill.distanceToGo() != 0)
+    {
       puriDrill.run();
     }
 
@@ -318,7 +354,8 @@ void drill(){
 
     puriDrill.setSpeed(-4000);
 
-    while(digitalRead(drill_home_sensor) == LOW){
+    while (digitalRead(drill_home_sensor) == LOW)
+    {
       puriDrill.runSpeed();
     }
 
@@ -329,24 +366,23 @@ void drill(){
     delay(200);
 
     puriDrill.setCurrentPosition(0);
-
   }
 }
 
-void masala(){
+void masala()
+{
 
   digitalWrite(alu, HIGH);
   digitalWrite(onion, HIGH);
   delay(2000);
   digitalWrite(alu, LOW);
   digitalWrite(onion, LOW);
-  
+
   digitalWrite(channa, HIGH);
   digitalWrite(sev, HIGH);
   delay(1000);
   digitalWrite(channa, LOW);
-  digitalWrite(sev,LOW);
-
+  digitalWrite(sev, LOW);
 }
 
 void s_catcher_open2()
@@ -355,7 +391,7 @@ void s_catcher_open2()
   {
 
     // Move forward
-    catcherOpener2.moveTo(5000);
+    catcherOpener2.moveTo(-5000);
     while (catcherOpener2.distanceToGo() != 0)
     {
       catcherOpener2.run();
@@ -367,7 +403,7 @@ void s_catcher_close2()
 {
   if (digitalRead(s_catcher_opener2_home_sensor) == LOW)
   {
-    catcherOpener2.setSpeed(-4000);
+    catcherOpener2.setSpeed(4000);
     while (digitalRead(s_catcher_opener2_home_sensor) == LOW)
     {
       catcherOpener2.runSpeed();
@@ -379,10 +415,123 @@ void s_catcher_close2()
   }
 }
 
+void plate_vaccum_on()
+{
+  digitalWrite(plate_vaccum, HIGH);
+}
+
+void plate_vaccum_off()
+{
+  digitalWrite(plate_vaccum, LOW);
+}
+
+void cup_dispense()
+{
+  while (digitalRead(cup_detect_ir) == HIGH)
+  {
+    digitalWrite(cup_dispensor_motor, HIGH);
+  }
+  digitalWrite(cup_dispensor_motor, LOW);
+  delay(100);
+}
+
+void plate_cup_up()
+{
+  if (digitalRead(plate_cup_vertical_home_sensor) == HIGH)
+  {
+    plate_vaccum_on();
+    pcVertical.moveTo(36400);
+
+    while (pcVertical.distanceToGo() != 0)
+    {
+      pcVertical.run();
+    }
+
+    cup_dispense();
+  }
+}
+
+void plate_cup_down()
+{
+  if (digitalRead(plate_cup_vertical_home_sensor) == LOW)
+  {
+    pcVertical.setSpeed(-4000);
+    while (digitalRead(plate_cup_vertical_home_sensor) == LOW)
+    {
+      pcVertical.runSpeed();
+    }
+    pcVertical.stop();
+    delay(100);
+    pcVertical.setCurrentPosition(0);
+  }
+}
+
+void plate_cup_fwd_till_masala()
+{
+  if (digitalRead(plate_cup_horizontal_home_sensor) == HIGH)
+  {
+
+    pcHorizontal.moveTo(-5400);
+
+    while (pcHorizontal.distanceToGo() != 0)
+    {
+      pcHorizontal.run();
+    }
+
+    pcHorizontal.setCurrentPosition(0);
+  }
+}
+
+void plate_cup_fwd_final()
+{
+
+  pcHorizontal.moveTo(-7000);
+
+  while (pcHorizontal.distanceToGo() != 0)
+  {
+    pcHorizontal.run();
+  }
+
+  delay(100);
+
+  plate_vaccum_off();
+
+  while(digitalRead(plate_detect_ir) == LOW && digitalRead(cup_detect_ir) == LOW){
+
+  }
+}
+
+void plate_cup_bwd()
+{
+  if (digitalRead(plate_cup_horizontal_home_sensor) == LOW)
+  {
+    pcHorizontal.setSpeed(4000);
+    while (digitalRead(plate_cup_horizontal_home_sensor) == LOW)
+    {
+      pcHorizontal.runSpeed();
+    }
+
+    pcHorizontal.stop();
+    delay(100);
+    pcHorizontal.setCurrentPosition(0);
+  }
+}
+
+void plate_rotate()
+{
+  plateRotor.setCurrentPosition(0);
+  plateRotor.move(25);
+
+  while (plateRotor.distanceToGo() != 0)
+  {
+    plateRotor.run();
+  }
+}
+
 /* nth-puri functions */
 
-
-void puri_1(){
+void puri_1()
+{
   puri_barrel_rotor();
   delay(100);
   s_catcher_open1();
@@ -397,8 +546,9 @@ void puri_1(){
   conveyor();
 }
 
-void puri_2(){
-  drill();  // puri 1 drilling
+void puri_2()
+{
+  drill(); // puri 1 drilling
   delay(100);
   puri_barrel_rotor();
   delay(100);
@@ -412,13 +562,13 @@ void puri_2(){
   puri_pull();
   delay(100);
   conveyor();
-
 }
 
-void puri_3_to_5(){
-  masala(); //puri 1 filling
+void puri_3_to_5()
+{
+  masala(); // puri 1 filling
   delay(100);
-  drill();  //puri 2 drilling
+  drill(); // puri 2 drilling
   delay(100);
   puri_barrel_rotor();
   delay(100);
@@ -431,18 +581,20 @@ void puri_3_to_5(){
   delay(100);
   puri_pull();
   delay(100);
-  s_catcher_open2();  //puri 1 comes out
-  delay(100);
+  s_catcher_open2(); // puri 1 comes out
+  delay(400);
   s_catcher_close2();
   delay(100);
+  plate_rotate();
+  delay(100);
   conveyor();
-
 }
 
-void puri_6(){
-  masala(); //for puri 4 filling
+void puri_6()
+{
+  masala(); // for puri 4 filling
   delay(100);
-  drill();  //for puri 5 drilling
+  drill(); // for puri 5 drilling
   delay(100);
   puri_barrel_rotor();
   delay(100);
@@ -455,26 +607,39 @@ void puri_6(){
   delay(100);
   puri_pull();
   delay(100);
-  s_catcher_open2();  //puri 4 comes out
+  s_catcher_open2(); // puri 4 comes out
   delay(100);
   s_catcher_close2();
+  delay(100);
+  plate_rotate();
   delay(100);
   conveyor();
   delay(100);
-  masala(); //for puri 5 filling
+  masala(); // for puri 5 filling
   delay(100);
-  drill();  //for puri 6 drilling
+  drill(); // for puri 6 drilling
   delay(100);
-  s_catcher_open2();  //puri 5 comes out
+  s_catcher_open2(); // puri 5 comes out
   delay(100);
   s_catcher_close2();
+  delay(100);
+  plate_rotate();
   delay(100);
   conveyor();
   delay(100);
-  masala(); //for puri 6 filling
+  masala(); // for puri 6 filling
   delay(100);
-  s_catcher_open2();  // puri 6 comes out
+  s_catcher_open2(); // puri 6 comes out
   delay(100);
   s_catcher_close2();
+  delay(100);
+  plate_cup_fwd_final();
+}
 
+void get_plate_cup(){
+  plate_cup_up();
+  delay(100);
+  plate_cup_down();
+  delay(100);
+  plate_cup_fwd_till_masala();
 }
