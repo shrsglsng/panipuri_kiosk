@@ -28,42 +28,45 @@ void customer_fwd2();
 void customer_bwd();
 void puri_rotation();
 
+void waterfil();
+void sweet_mix();
+void spicy_mix();
 
 
-const int puri_catcher_step = 47; // catcher PUL+
-const int puri_catcher_dir = 46;  // catcher DIR+
+const int puri_catcher_step = 47; // NTR catcher PUL+
+const int puri_catcher_dir = 46;  // NTR catcher DIR+
 
-const int barrel_step = 49; // barrel PUL+
-const int barrel_dir = 48;  // barrel DIR+
+const int barrel_step = 49; // NPY barrel PUL+
+const int barrel_dir = 48;  // NPY barrel DIR+
 
-const int conveyor_home_sensor = A2;
-const int conveyor_step = 41;
-const int conveyor_dir = 40;
+const int conveyor_home_sensor = A2;  //LRP conveyor home position inductive proximity sensor
+const int conveyor_step = 41;   //NIY PUL+ puri conveyor stepper motor
+const int conveyor_dir = 40;    //NIY DIR+ puri conveyor stepper motor
 
-const int puri_catcher_home_sensor = A0;
+const int puri_catcher_home_sensor = A0;    //LRG Sensor inductive proximity sensor
 const int ir = A1; // ir to detect presence of puri in the puri catcher
 
-const int s_catcher_opener1_step = 45; // step of 1st silicon catcher i.e below puri catcher
-const int s_catcher_opener1_dir = 44;
-const int s_catcher_opener1_home_sensor = A3; // 1st silicon catcher's home sensor
+const int s_catcher_opener1_step = 45; // NEN PUL+ step of 1st silicon catcher i.e below puri catcher
+const int s_catcher_opener1_dir = 44;   //NEN DIR+
+const int s_catcher_opener1_home_sensor = A3; //LIS 1st silicon catcher's home sensor inductive proximity 
 
-const int s_catcher_opener2_step = 39;
-const int s_catcher_opener2_dir = 38;
-const int s_catcher_opener2_home_sensor = A5;
+const int s_catcher_opener2_step = 39;    //NEM PUL+
+const int s_catcher_opener2_dir = 38;     //NEM  DIR+
+const int s_catcher_opener2_home_sensor = A5;   //LIP 2nd silicon catcher's home sensor inductive proximity 
 
-const int blower_pwm = 8;
-const int blower_taco = 9;
-const int blower_solenoid = 22;
+const int blower_pwm = 8;   //FOB
+const int blower_taco = 9;   //FOB
+const int blower_solenoid = 22;   //FX2
 
-const int drill_step = 43;
-const int drill_dir = 42;
-const int drill_home_sensor = A4;
-const int drill_motor = 12;
+const int drill_step = 43;    //NPD PUL+
+const int drill_dir = 42;     //NPD DIR+
+const int drill_home_sensor = A4;   //LIR driller home position checking inductive proximity sensor
+const int drill_motor = 12;   //FMM
 
-const int alu = 11;
-const int onion = 10;
-const int channa = 7;
-const int sev = 6;
+const int alu = 11;   //FMT
+const int onion = 10;   //FPM
+const int channa = 7;   //FPT
+const int sev = 6;      //FIS
 
 const int pc_home_sensor = A6;  //LIZ
 const int plate_step= 37;   //NBR step
@@ -80,6 +83,17 @@ const int cup_ir = A11; //LEX cup detection ir
 
 const int plate_rot_step= 33; //NEX pul+
 const int plate_rot_dir= 32;  //NEX dir+
+
+const int pump= 3;    //FIA water pump motor
+const int flot_sensor= A14;   //FLA float sensor to sense tank was filled or not
+
+const int spicy_sol= 2;   //FLA
+const int spicy_mixer= 16;  //FPC
+const int spicy_flavor= 17;   //FWP
+
+const int sweet_sol= 18;    //FCD
+const int sweet_mixer= 19;   //FX1
+const int sweet_flavor= 23;    //TDL
 
 AccelStepper puriCatcher(AccelStepper::DRIVER, puri_catcher_step, puri_catcher_dir);
 AccelStepper puriBarrel(AccelStepper::DRIVER, barrel_step, barrel_dir);
@@ -122,6 +136,17 @@ void setup()
 
   pinMode(plate_disp_hmp, INPUT);
 
+  pinMode(flot_sensor, INPUT);
+  pinMode(pump, OUTPUT);
+
+  pinMode(spicy_sol, OUTPUT);
+  pinMode(spicy_mixer, OUTPUT);
+  pinMode(spicy_flavor, OUTPUT);
+
+  pinMode(sweet_sol, OUTPUT);
+  pinMode(sweet_mixer, OUTPUT);
+  pinMode(sweet_flavor, OUTPUT);
+
 
   puriCatcher.setMaxSpeed(5000);     // Set max speed  puri catcher
   puriCatcher.setAcceleration(4000); // Set acceleration
@@ -154,8 +179,8 @@ void setup()
 
 void loop()
 {
-  
-  all_stepper_homing(); /*
+ /* 
+  all_stepper_homing(); 
   delay(200);
   puri_barrel_rotor();
   delay(200);
@@ -181,6 +206,7 @@ void loop()
   s_catcher_close2();
   delay(200);    */
   
+  /*   
   plate_cup_fwd();
   //plt_disp_on();
   //cup_disp();
@@ -191,9 +217,11 @@ void loop()
   puri_rotation();
   customer_fwd2();
   //plt_disp_off();
-  customer_bwd();
+  customer_bwd();  */
   
-
+  waterfil();
+  //sweet_mix();
+  spicy_mix();
 
 
 }
@@ -603,4 +631,46 @@ void puri_rotation(){
       //stepper.setCurrentPosition(0);
     }
    // delay(5000); testing purpose after completion of for loop whether its starting the for loop after 5 seconds or not
+}
+
+void waterfil(){
+  if(digitalRead(flot_sensor)==LOW){
+    digitalWrite(pump,HIGH);
+  }
+  else{
+    digitalWrite(pump,LOW);
+  }
+
+}
+
+void spicy_mix()
+{
+  digitalWrite(spicy_sol, HIGH);
+  digitalWrite(spicy_mixer, HIGH);
+  delay(2500);
+  digitalWrite(spicy_flavor, HIGH);
+  delay(2500);
+  digitalWrite(spicy_flavor, LOW);
+  delay(2000);
+  digitalWrite(spicy_sol, LOW);
+  digitalWrite(spicy_mixer, LOW);
+  delay(2000);
+  /*
+  while(1){
+    
+  } */
+}
+
+void sweet_mix()
+{
+  digitalWrite(sweet_sol, HIGH);
+  digitalWrite(sweet_mixer, HIGH);
+  delay(2500);
+  digitalWrite(sweet_flavor, HIGH);
+  delay(1000);
+  digitalWrite(sweet_flavor, LOW);
+  delay(4000);
+  digitalWrite(sweet_sol, LOW);
+  digitalWrite(sweet_mixer, LOW);
+  delay(2000);
 }
