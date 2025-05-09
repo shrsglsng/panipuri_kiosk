@@ -31,6 +31,10 @@ void plate_cup_bwd();
 void plate_rotate();
 void get_plate_cup();
 
+void water_refill();
+void sweet_pani();
+void spicy_pani();
+
 const int puri_catcher_step = 47; // catcher PUL+
 const int puri_catcher_dir = 46;  // catcher DIR+
 
@@ -82,6 +86,17 @@ const int cup_detect_ir = A11;     // LEX
 const int plate_rotor_step = 33; // NEX
 const int plate_rotor_dir = 32;
 
+const int water_refill_pump = 3;         // FIA
+const int water_tank_float_sensor = A14; // FLA
+
+const int spicy_sol = 2;     // FLA
+const int spicy_mixer = 16;  // FPC
+const int spicy_flavor = 17; // FPW
+
+const int sweet_sol = 18;    // FCD
+const int sweet_mixer = 19;  // FX1
+const int sweet_flavor = 23; // TDL
+
 AccelStepper puriCatcher(AccelStepper::DRIVER, puri_catcher_step, puri_catcher_dir);
 AccelStepper puriBarrel(AccelStepper::DRIVER, barrel_step, barrel_dir);
 AccelStepper catcherOpener1(AccelStepper::DRIVER, s_catcher_opener1_step, s_catcher_opener1_dir);
@@ -119,6 +134,17 @@ void setup()
   pinMode(cup_detect_ir, INPUT);
   pinMode(plate_vaccum, OUTPUT);
   pinMode(cup_dispensor_motor, OUTPUT);
+
+  pinMode(water_tank_float_sensor, INPUT);
+  pinMode(water_refill_pump, OUTPUT);
+
+  pinMode(spicy_sol, OUTPUT);
+  pinMode(spicy_flavor, OUTPUT);
+  pinMode(spicy_mixer, OUTPUT);
+
+  pinMode(sweet_sol, OUTPUT);
+  pinMode(sweet_flavor, OUTPUT);
+  pinMode(sweet_mixer, OUTPUT);
 
   puriCatcher.setMaxSpeed(5000);     // Set max speed  puri catcher
   puriCatcher.setAcceleration(4000); // Set acceleration
@@ -180,9 +206,9 @@ void all_stepper_homing()
 
   /* s_cathcher1 homing */
 
-  void s_catcher_close1();
+  s_catcher_close1();
 
-   /* s_catcher2_homing */
+  /* s_catcher2_homing */
 
   s_catcher_close2();
 
@@ -214,13 +240,14 @@ void all_stepper_homing()
     puriConveyor.setCurrentPosition(0);
   }
 
-
   /* plate_cup homing */
 
   plate_cup_down();
   plate_cup_bwd();
 
+  /* water tank refill */
 
+  water_refill();
 }
 
 /* 60 degree rotation of puri barrel */
@@ -306,7 +333,7 @@ void s_catcher_close1()
 void blower()
 {
 
-  analogWrite(blower_pwm, 200);
+  analogWrite(blower_pwm, 250);
 
   delay(2500);
 
@@ -496,8 +523,8 @@ void plate_cup_fwd_final()
 
   plate_vaccum_off();
 
-  while(digitalRead(plate_detect_ir) == LOW && digitalRead(cup_detect_ir) == LOW){
-
+  while (digitalRead(plate_detect_ir) == LOW && digitalRead(cup_detect_ir) == LOW)
+  {
   }
 }
 
@@ -520,7 +547,7 @@ void plate_cup_bwd()
 void plate_rotate()
 {
   plateRotor.setCurrentPosition(0);
-  plateRotor.move(25);
+  plateRotor.move(30);
 
   while (plateRotor.distanceToGo() != 0)
   {
@@ -636,10 +663,57 @@ void puri_6()
   plate_cup_fwd_final();
 }
 
-void get_plate_cup(){
+void get_plate_cup()
+{
   plate_cup_up();
   delay(100);
   plate_cup_down();
   delay(100);
   plate_cup_fwd_till_masala();
+  delay(100);
+  spicy_pani();
+}
+
+void water_refill()
+{
+  if (digitalRead(water_tank_float_sensor) == LOW)
+  {
+    while (digitalRead(water_tank_float_sensor) == LOW)
+    {
+      digitalWrite(water_refill_pump, HIGH);
+    }
+
+    digitalWrite(water_refill_pump, LOW);
+  }
+  else
+  {
+    digitalWrite(water_refill_pump, LOW);
+  }
+}
+
+void sweet_pani(){
+
+  digitalWrite(sweet_flavor, HIGH); 
+  delay(1000);  //change taste here
+  digitalWrite(sweet_flavor,LOW);
+  digitalWrite(sweet_sol,HIGH);
+  delay(300);
+  digitalWrite(sweet_mixer, HIGH);
+  delay(6500);
+  digitalWrite(sweet_mixer, LOW);
+  digitalWrite(sweet_sol, LOW);
+
+}
+
+void spicy_pani(){
+
+  digitalWrite(spicy_flavor, HIGH);
+  delay(1000);  //change taste here
+  digitalWrite(spicy_flavor, LOW);
+  digitalWrite(spicy_sol, HIGH);
+  delay(300);
+  digitalWrite(spicy_mixer, HIGH);
+  delay(6500);
+  digitalWrite(spicy_sol, LOW);
+  digitalWrite(spicy_mixer, LOW);
 }
