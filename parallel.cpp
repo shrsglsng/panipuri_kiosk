@@ -8,6 +8,10 @@ void s1_s2_catcher_open();
 void s1_s2_catcher_close();
 void puri_push_drill_down();
 void puri_pull_drill_up();
+void puri_push_s_catcher_open1_plate_cup_up(); // for first puri
+void blower_plate_cup_down_fwd_till_masala();
+void cup_dispense();
+void puri_pull_s_catcher_close1_spicy_paani();
 
 const int puri_catcher_step = 47; // catcher PUL+
 const int puri_catcher_dir = 46;  // catcher DIR+
@@ -132,8 +136,8 @@ void setup()
     catcherOpener2.setMaxSpeed(5000); // s_catcher_opener
     catcherOpener2.setAcceleration(3000);
 
-    puriCatcher.setMaxSpeed(5000);
-    puriCatcher.setAcceleration(500);
+    puriConveyor.setMaxSpeed(5000);
+    puriConveyor.setAcceleration(500);
 
     puriDrill.setMaxSpeed(5000);
     puriDrill.setAcceleration(3000);
@@ -150,9 +154,13 @@ void setup()
 
 void loop()
 {
-    puri_push_drill_down();
-    delay(2000);
-    puri_pull_drill_up();
+    all_axis_homing();
+    delay(500);
+    puri_push_s_catcher_open1_plate_cup_up();
+    delay(500);
+    blower_plate_cup_down_fwd_till_masala();
+    delay(500);
+    puri_pull_s_catcher_close1_spicy_paani();
     delay(2000);
 }
 
@@ -204,8 +212,8 @@ void all_axis_homing()
     {
         if (digitalRead(conveyor_home_sensor) == LOW)
         {
-            puriCatcher.setSpeed(4000);
-            puriCatcher.runSpeed();
+            puriConveyor.setSpeed(4000);
+            puriConveyor.runSpeed();
         }
     }
 
@@ -215,6 +223,7 @@ void all_axis_homing()
     puriDrill.setCurrentPosition(0);
     pcHorizontal.setCurrentPosition(0);
     pcVertical.setCurrentPosition(0);
+    puriConveyor.setCurrentPosition(0);
 }
 
 void s1_s2_catcher_open()
@@ -291,24 +300,148 @@ void puri_push_drill_down()
     }
 }
 
-void puri_pull_drill_up(){
+void puri_pull_drill_up()
+{
 
-    while(digitalRead(puri_catcher_home_sensor) == LOW || digitalRead(drill_home_sensor) == LOW){
+    while (digitalRead(puri_catcher_home_sensor) == LOW || digitalRead(drill_home_sensor) == LOW)
+    {
 
-        if(digitalRead(puri_catcher_home_sensor) == LOW){
+        if (digitalRead(puri_catcher_home_sensor) == LOW)
+        {
             puriCatcher.setSpeed(-4000);
             puriCatcher.runSpeed();
         }
-        if(digitalRead(drill_home_sensor) == LOW){
+        if (digitalRead(drill_home_sensor) == LOW)
+        {
             puriDrill.setSpeed(-4000);
             puriDrill.runSpeed();
         }
-
     }
 
     digitalWrite(drill_motor, LOW);
 
     puriCatcher.setCurrentPosition(0);
     puriDrill.setCurrentPosition(0);
+}
+
+void puri_push_s_catcher_open1_plate_cup_up()
+{
+
+    if (digitalRead(puri_catcher_home_sensor) == HIGH && digitalRead(s_catcher_opener1_home_sensor) == HIGH && digitalRead(plate_cup_vertical_home_sensor) == HIGH)
+    {
+        puriCatcher.moveTo(14000);
+        catcherOpener1.moveTo(5000);
+        pcVertical.moveTo(36400);
+
+        while (puriCatcher.distanceToGo() != 0 || catcherOpener1.distanceToGo() != 0 || pcVertical.distanceToGo() != 0)
+        {
+            if (puriCatcher.distanceToGo() != 0)
+            {
+                puriCatcher.setSpeed(4000);
+                puriCatcher.runSpeed();
+            }
+
+            if (catcherOpener1.distanceToGo() != 0)
+            {
+                catcherOpener1.setSpeed(4000);
+                catcherOpener1.runSpeed();
+            }
+
+            if (pcVertical.distanceToGo() != 0)
+            {
+                pcVertical.setSpeed(6000);
+                pcVertical.runSpeed();
+            }
+        }
+
+        cup_dispense();
+    }
+    else
+    {
+        all_axis_homing();
+    }
+}
+
+void cup_dispense()
+{
+    while (digitalRead(cup_detect_ir) == HIGH)
+    {
+        digitalWrite(cup_dispensor_motor, HIGH);
+    }
+    digitalWrite(cup_dispensor_motor, LOW);
+    delay(100);
+}
+
+void blower_plate_cup_down_fwd_till_masala()
+{
+    int function_call_millis = millis();
+
+    while (millis() - function_call_millis < 2500 || digitalRead(plate_cup_vertical_home_sensor) == LOW){
+
+        if(millis() - function_call_millis < 2500){
+            analogWrite(blower_pwm, 255);
+        }
+
+        if(digitalRead(plate_cup_vertical_home_sensor) == LOW){
+            pcVertical.setSpeed(-6000);
+            pcVertical.runSpeed();
+        }
+    }
+
+    analogWrite(blower_pwm, 0);
+    pcVertical.setCurrentPosition(0);
+
+    pcHorizontal.moveTo(-5400);
+
+    function_call_millis = millis();
+
+    while(millis() - function_call_millis < 1500 && pcHorizontal.distanceToGo() != 0){
+        
+        if(millis() - function_call_millis < 1500){
+            digitalWrite(blower_solenoid, HIGH);
+        }
+
+        if(pcHorizontal.distanceToGo() != 0){
+            pcHorizontal.setSpeed(4000);
+            pcHorizontal.runSpeedToPosition();
+        }
+    }
+
+    digitalWrite(blower_solenoid, LOW);
 
 }
+
+void puri_pull_s_catcher_close1_spicy_paani(){
+    int function_call_millis = millis();
+
+    while(millis() - function_call_millis < 8000 || digitalRead(puri_catcher_home_sensor) == LOW || digitalRead(s_catcher_opener1_home_sensor) == LOW){
+
+        if(millis() - function_call_millis < 1000){
+            digitalWrite(spicy_flavor, HIGH);
+        }
+
+        if(millis() - function_call_millis > 1000 && millis() - function_call_millis < 8000){
+            digitalWrite(spicy_flavor, LOW);
+            digitalWrite(spicy_sol, HIGH);
+            digitalWrite(spicy_mixer, HIGH);
+        }
+
+        if(digitalRead(puri_catcher_home_sensor) == LOW){
+            puriCatcher.setSpeed(-4000);
+            puriCatcher.runSpeed();
+        }
+
+        if(digitalRead(s_catcher_opener1_home_sensor) == LOW){
+            catcherOpener1.setSpeed(-4000);
+            catcherOpener1.runSpeed();
+        }
+    }
+
+    digitalWrite(spicy_sol, LOW);
+    digitalWrite(spicy_mixer, LOW);
+
+    puriCatcher.setCurrentPosition(0);
+    catcherOpener1.setCurrentPosition(0);
+
+}
+
