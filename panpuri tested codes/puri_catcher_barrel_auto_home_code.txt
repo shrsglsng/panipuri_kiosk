@@ -1,0 +1,69 @@
+#include <AccelStepper.h>
+
+void stepper_home();
+
+const int motorPinPUL = 2;  // catcher PUL+ pin connected to Arduino digital pin 2
+const int motorPinDIR = 3;  // catcher DIR+ pin connected to Arduino digital pin 3
+const int puri_pul = 4;     // puri drop PUL+ pin connected to Arduino digital pin 4
+const int puri_dir = 5;     // puri drop DIR+ pin connected to Arduino digital pin 5
+const int sensorPin = 7;    // Sensor pin connected to Arduino digital pin 7
+const int ir = 8;           // IR sensor pin connected to Arduino digital pin 8
+
+AccelStepper myStepper(AccelStepper::DRIVER, motorPinPUL, motorPinDIR);
+AccelStepper puriStepper(AccelStepper::DRIVER, puri_pul, puri_dir);
+
+void setup() {
+  pinMode(sensorPin, INPUT_PULLUP);  // Set sensor pin as input with pull-up resistor
+  pinMode(ir, INPUT_PULLUP);
+  myStepper.setMaxSpeed(2000);       // Set max speed
+  myStepper.setAcceleration(5000);   // Set acceleration
+  puriStepper.setMaxSpeed(2000);
+  puriStepper.setAcceleration(5000);
+}
+
+void loop() {
+  stepper_home();
+  delay(500);
+  if (digitalRead(sensorPin) == HIGH && digitalRead(ir) == LOW) {
+    // Sensor detected an obstacle, move forward
+    delay(1000); // Start after 2 sec if the puri is identified and the catcher is in home position 
+    myStepper.moveTo(6300);           // Move 6300 steps forward
+    myStepper.runToPosition();       // Run to the new position
+    delay(3000);                     // Wait for 5 seconds
+
+    // Move backward until the sensor detects high
+    myStepper.setSpeed(-2000);       // Set speed for moving backward
+    while (digitalRead(sensorPin) == LOW) {
+      myStepper.runSpeed();          // Continue moving backward
+    }
+    myStepper.stop();                // Stop the motor once the sensor reads HIGH
+    delay(2000);                     // Wait for 3 seconds
+    myStepper.setCurrentPosition(0); // Reset position for myStepper
+  }
+
+  // Check for the puri dropper motor
+  if (digitalRead(sensorPin) == HIGH) {
+    while (digitalRead(ir) == HIGH) {
+      puriStepper.move(2200);            // Move 2200 steps forward
+      puriStepper.runToPosition();       // Run to the new position
+      delay(200);  // Add a small delay to prevent rapid cycling
+    }
+  }
+
+  // Ensuring the puri dropper can operate again by resetting its position 
+  if (digitalRead(sensorPin) == LOW || digitalRead(ir) == LOW) {
+    puriStepper.setCurrentPosition(0);  // Reset position for puriStepper
+  }
+}
+
+void stepper_home() {
+  if (digitalRead(sensorPin) == LOW) {
+    myStepper.setSpeed(-2000);       // Set speed for moving backward
+    while (digitalRead(sensorPin) == LOW) {
+      myStepper.runSpeed();          // Continue moving backward
+    }
+    myStepper.stop();
+    delay(500);
+    myStepper.setCurrentPosition(0); // Reset position for myStepper after homing
+  }
+}

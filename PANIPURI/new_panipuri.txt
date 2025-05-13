@@ -1,0 +1,341 @@
+#include <AccelStepper.h>
+
+void stepper_home();
+void barrelrot();
+void puripush();
+void puriopn();
+void puridrilling();
+void conveyor();
+void masala();
+void catopn();
+void catclo();
+void s_catcher_opener_2();
+void s_catcher_closer_2();
+void conveyor1();
+
+
+const int puri_catcher_step = 47;  //NTR_step catcher PUL+  
+const int puri_catcher_dir = 46;  //NTR_dir catcher DIR+ 
+const int barrel_step = 49;     //NPY_step puri drop PUL+ 
+const int barrel_dir = 48;     //NPY_dir puri drop DIR+ 
+const int puri_catcher_home_sensor = A0;    //LRG Sensor 
+const int ir = A1;           //LRC IR sensor 
+const int cat_step=45;     // NEN_step  PUL+ puri holder1 stepper motor
+const int cat_dir=44;      // NEN-dir DIR+ puri holder1 stepper motor
+const int cat_hmp=A3;     //LIS puri holder opener1 inductive proximity sensor
+const int drill_step=43;  //NPD_step PUL+ puri driller stepper motor
+const int drill_dir=42;   //NPD_dir DIR+ puri driller stepper motor
+const int drill_hmp=A4;   //LIR driller home position checking inductive proximity sensor
+const int drill_mtr=12;   //FMM for drilling motor
+const int convy_step=41;  //NIY_step PUL+ puri conveyor stepper motor
+const int convy_dir=40;    //NIY_dir DIR+ puri conveyor stepper motor
+const int convy_hmp=A2;    //LRP conveyor home position inductive proximity sensor
+const int alu= 11;         //FMT for alu
+const int onion=10;       //FPM for onion 
+const int chenna=7;         //FPT for chenna
+const int sev=6;           //FIS for sev
+const int cat_step2=39;     // NEM_step  PUL+ puri holder2 stepper motor
+const int cat_dir2=38;      // NEM-dir DIR+ puri holder2 stepper motor
+const int s_cat_hmp2=A5;     //LIP puri holder opener2 inductive proximity sensor
+
+
+int motorRunning = 0;  // 0 = stopped, 1 = running
+int prevSensorState = LOW;  // Previous state of the sensor
+
+
+AccelStepper myStepper(AccelStepper::DRIVER, puri_catcher_step, puri_catcher_dir);
+AccelStepper puriStepper(AccelStepper::DRIVER, barrel_step, barrel_dir);
+AccelStepper puriopen(AccelStepper::DRIVER, cat_step, cat_dir);
+AccelStepper puridrill(AccelStepper::DRIVER, drill_step, drill_dir);
+AccelStepper puriconv(AccelStepper::DRIVER, convy_step, convy_dir);
+AccelStepper puriopen2(AccelStepper::DRIVER, cat_step2, cat_dir2);
+
+
+
+void setup() {
+  pinMode(puri_catcher_home_sensor, INPUT);  // Set sensor pin as input with pull-up resistor
+  pinMode(ir, INPUT);
+  pinMode(cat_hmp, INPUT);
+  pinMode(drill_hmp, INPUT);
+  pinMode(convy_hmp, INPUT);
+  pinMode(s_cat_hmp2, INPUT);
+
+
+  pinMode(drill_mtr, OUTPUT);
+  pinMode(alu, OUTPUT);
+  pinMode(chenna, OUTPUT);
+  pinMode(onion, OUTPUT);
+  pinMode(sev, OUTPUT);
+
+
+
+  myStepper.setMaxSpeed(5000);       // Set max speed  puri catcher
+  myStepper.setAcceleration(4000);   // Set acceleration
+
+  puriStepper.setMaxSpeed(2000);      //barrel
+  puriStepper.setAcceleration(5000);
+
+  puriopen.setMaxSpeed(5000);           //puri_opener1
+  puriopen.setAcceleration(3000);
+
+  puridrill.setMaxSpeed(5000);          //puri driller
+  puridrill.setAcceleration(3000);
+
+  puriconv.setMaxSpeed(5000);          //puri conveyor
+  puriconv.setAcceleration(1000);
+
+  puriopen2.setMaxSpeed(5000);           //puri_opener2
+  puriopen2.setAcceleration(3000);
+
+
+}
+
+void loop() {
+  /*stepper_home();
+  delay(200);
+  barrelrot();
+  delay(200);
+  puripush(); 
+  puriopn(); 
+  puridrilling(); 
+  conveyor();   
+  masala(); */
+  s_catcher_opener_2();
+  s_catcher_closer_2(); 
+  //conveyor1()  ;
+  
+
+  /*
+  
+  // Check for the puri dropper motor */
+
+}
+
+void stepper_home() {
+  if (digitalRead(puri_catcher_home_sensor) == LOW) {
+    myStepper.setSpeed(-2000);       // Set speed for moving backward
+    while (digitalRead(puri_catcher_home_sensor) == LOW) {
+      myStepper.runSpeed();          // Continue moving backward
+    }
+    myStepper.stop();
+    delay(500);
+    myStepper.setCurrentPosition(0); // Reset position for myStepper after homing
+  }
+}
+
+void barrelrot() {
+ if (digitalRead(puri_catcher_home_sensor) == HIGH) {
+    while (digitalRead(ir) == HIGH) {
+      puriStepper.move(500);            // Move 2200 steps forward
+      puriStepper.runToPosition();       // Run to the new position
+      delay(200);  // Add a small delay to prevent rapid cycling
+    }
+  }
+
+  // Ensuring the puri dropper can operate again by resetting its position 
+  if (digitalRead(puri_catcher_home_sensor) == LOW || digitalRead(ir) == LOW) {
+    puriStepper.setCurrentPosition(0);  // Reset position for puriStepper
+  }
+
+}
+
+void puripush() {
+  if (digitalRead(puri_catcher_home_sensor) == HIGH && digitalRead(ir) == LOW) {
+  delay(1000); // Wait before start
+  myStepper.moveTo(12800);
+  while (myStepper.distanceToGo() != 0) {
+    myStepper.run(); // Smooth ramped move
+  }
+
+  delay(3000); // Pause
+
+  myStepper.setSpeed(-4000);
+  while (digitalRead(puri_catcher_home_sensor) == LOW) {
+    myStepper.runSpeed(); // Smooth constant return
+  }
+  myStepper.stop();
+  delay(2000);
+  myStepper.setCurrentPosition(0); // Home reset
+}
+
+}
+
+void puriopn() {
+  if (digitalRead(cat_hmp) == LOW) {
+  //delay(1000); // Wait before start
+
+  // Move forward
+  puriopen.moveTo(4000);
+  while (puriopen.distanceToGo() != 0) {
+    puriopen.run();
+  }
+
+  delay(3000); // Pause
+
+  // Move backward continuously until home sensor is HIGH
+  puriopen.setSpeed(-4000);
+  while (digitalRead(cat_hmp) == HIGH) {
+    puriopen.runSpeed();
+  }
+
+  puriopen.stop();
+  delay(2000);
+  puriopen.setCurrentPosition(0); // Reset position at home
+  } 
+}
+
+void puridrilling(){
+  if (digitalRead(drill_hmp) == HIGH) {
+  digitalWrite(drill_mtr, HIGH); // Turn on drill motor
+
+  // Move forward 4000 steps
+  puridrill.moveTo(6000);
+  while (puridrill.distanceToGo() != 0) {
+    puridrill.run();
+  }
+
+  delay(500); // Short pause before coming back
+
+  // Return back until SN04-P sensor detects object again
+  puridrill.setSpeed(-4000);
+  while (digitalRead(drill_hmp) == LOW) {
+    puridrill.runSpeed();
+  }
+
+  puridrill.stop();               // Stop movement
+  delay(100);
+  digitalWrite(drill_mtr, LOW);   // Turn off drill motor
+
+  delay(2000);                    // Wait before resetting
+  puridrill.setCurrentPosition(0); // Set current as home
+}
+
+}
+
+void conveyor() {
+ int currentSensorState = digitalRead(convy_hmp);  // Read the current state of the sensor
+
+  // Check for a rising edge (sensor changes from LOW to HIGH)
+  if (currentSensorState == HIGH && prevSensorState == LOW) {
+    if (motorRunning == 0) {
+      motorRunning = 1;  // Start the motor
+      puriconv.setSpeed(4000);  // Set speed
+    } else {
+      motorRunning = 0;  // Stop the motor
+      puriconv.stop();
+      delay(5000);  // Wait for 3 seconds
+      motorRunning = 1;  // Start the motor again
+      puriconv.setSpeed(4000);  // Set speed again
+    }
+  }
+
+  // If the motor is supposed to be running, keep it running
+  if (motorRunning == 1) {
+    puriconv.runSpeed();  // Continuously move the motor at the set speed
+  }
+
+  // Update the previous sensor state
+  prevSensorState = currentSensorState;
+ 
+}
+
+void masala(){
+  if(digitalRead(convy_hmp)==HIGH){
+    digitalWrite(alu,HIGH);
+    digitalWrite(onion,HIGH);
+    delay(2000);
+    digitalWrite(alu,LOW);
+    digitalWrite(onion,LOW);
+    //delay(600);
+
+
+    digitalWrite(chenna,HIGH);
+    digitalWrite(sev,HIGH);
+    delay(1000);
+    //digitalWrite(alu,LOW);
+    //digitalWrite(chenna,LOW);
+    digitalWrite(chenna,LOW);
+    digitalWrite(sev,LOW);
+    delay(6000);
+
+  }else{
+    digitalWrite(alu,LOW);
+    digitalWrite(chenna,LOW);
+    digitalWrite(onion,LOW);
+    digitalWrite(sev,LOW);
+  }
+
+}
+
+void catopn(){
+  if (digitalRead(cat_hmp) == LOW) {
+  //delay(1000); // Wait before start
+
+  // Move forward
+  puriopen.moveTo(4000);
+  while (puriopen.distanceToGo() != 0) {
+    puriopen.run();
+  }
+
+  delay(3000); // Pause
+  }
+}
+
+void catclo(){
+  // Move backward continuously until home sensor is HIGH
+  puriopen.setSpeed(-4000);
+  while (digitalRead(cat_hmp) == HIGH) {
+    puriopen.runSpeed();
+  }
+
+  puriopen.stop();
+  delay(2000);
+  puriopen.setCurrentPosition(0); // Reset position at home
+}
+
+void s_catcher_opener_2(){
+  if (digitalRead(s_cat_hmp2) == HIGH) {
+  //delay(1000); // Wait before start
+
+  // Move forward
+  puriopen2.moveTo(-4000);
+  while (puriopen2.distanceToGo() != 0) {
+    puriopen2.run();
+  }
+
+  delay(3000); // Pause
+  }
+
+}
+
+void s_catcher_closer_2(){
+  // Move backward continuously until home sensor is HIGH
+  puriopen2.setSpeed(4000);
+  while (digitalRead(s_cat_hmp2) == LOW) {
+    puriopen2.runSpeed();
+  }
+
+  puriopen2.stop();
+  delay(2000);
+  puriopen2.setCurrentPosition(0); // Reset position at home
+}
+
+void conveyor1(){
+  static bool moving = false;  // Initially motor is not moving
+
+  if (!moving && digitalRead(convy_hmp) == HIGH) {
+    puriconv.setSpeed(4000);  // Set speed
+    moving = true;            // Start moving
+  }
+
+  if (moving) {
+    puriconv.runSpeed();       // Keep running the motor
+
+    if (digitalRead(convy_hmp) == HIGH) {
+      puriconv.stop();         // Stop motor when sensor detects again
+      delay(5000);             // Wait 5 seconds if you want
+      moving = false;          // Reset for next cycle
+    }
+  }
+
+}

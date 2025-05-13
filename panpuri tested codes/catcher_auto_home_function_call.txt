@@ -1,0 +1,26 @@
+#include <AccelStepper.h>
+void stepper_home();
+const int motorPinPUL = 2;  // catcher PUL+ pin connected to Arduino digital pin 2
+const int motorPinDIR = 3;  // catcher DIR+ pin connected to Arduino digital pin 3
+const int sensorPin = 7;    // Sensor pin connected to Arduino digital pin 7
+AccelStepper myStepper(AccelStepper::DRIVER, motorPinPUL, motorPinDIR);
+void setup() {
+  pinMode(sensorPin, INPUT_PULLUP);  // Set sensor pin as input with pull-up resistor
+  myStepper.setMaxSpeed(2000);       // Set max speed
+  myStepper.setAcceleration(5000);   // Set acceleration
+}
+void loop() {
+  stepper_home();
+  delay(500);
+}
+void stepper_home() {
+  if (digitalRead(sensorPin) == LOW) {
+    myStepper.setSpeed(-2000);       // Set speed for moving backward
+    while (digitalRead(sensorPin) == LOW) {
+      myStepper.runSpeed();          // Continue moving backward
+    }
+    myStepper.stop();
+    delay(500);
+    myStepper.setCurrentPosition(0); // Reset position for myStepper after homing
+  }
+}
