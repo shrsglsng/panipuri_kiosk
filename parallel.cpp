@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 
-#define MAX_POSITION -5000
-
 void all_axis_homing();
 void s1_s2_catcher_open();
 void s1_s2_catcher_close();
@@ -30,6 +28,12 @@ void conveyor();
 void masala();
 void s_catcher_open2();
 void s_catcher_close2();
+void plate_vaccum_on();
+void plate_vaccum_off();
+void puri_barrel_rotor();
+void plate_rotate();
+void water_refill();
+void plate_cup_fwd_till_customer();
 
 const int puri_catcher_step = 47; // catcher PUL+
 const int puri_catcher_dir = 46;  // catcher DIR+
@@ -174,7 +178,6 @@ void loop()
 {
     all_axis_homing();
     delay(100);
-
     puri_1_parallel(); // puri 1 @ station 1
     delay(100);
     conveyor(); // puri 1 @ station 2
@@ -196,7 +199,8 @@ void loop()
     conveyor(); // puri 5 @ station 2 puri 4 @ station 3
     delay(100);
     puri_6_parallel();
-
+    delay(1000);
+    plate_cup_fwd_till_customer();
     delay(3000);
 }
 
@@ -254,6 +258,8 @@ void all_axis_homing()
             puriConveyor.runSpeed();
         }
     }
+
+    water_refill();
 
     puriCatcher.setCurrentPosition(0);
     catcherOpener1.setCurrentPosition(0);
@@ -367,6 +373,81 @@ void conveyor()
     puriConveyor.setCurrentPosition(0);
 }
 
+void plate_vaccum_on()
+{
+    digitalWrite(plate_vaccum, HIGH);
+}
+
+void plate_vaccum_off()
+{
+    digitalWrite(plate_vaccum, LOW);
+}
+
+void puri_barrel_rotor()
+{
+    if (digitalRead(puri_catcher_home_sensor) == HIGH)
+    {
+        while (digitalRead(ir) == HIGH)
+        {
+            puriBarrel.move(500);       // Move 2200 steps forward
+            puriBarrel.runToPosition(); // Run to the new position
+            delay(200);                 // Add a small delay to prevent rapid cycling
+        }
+    }
+
+    // Ensuring the puri dropper can operate again by resetting its position
+    if (digitalRead(puri_catcher_home_sensor) == LOW || digitalRead(ir) == LOW)
+    {
+        puriBarrel.setCurrentPosition(0); // Reset position for puriBarrel
+    }
+}
+
+void plate_rotate()
+{
+    plateRotor.setCurrentPosition(0);
+    plateRotor.move(35);
+
+    while (plateRotor.distanceToGo() != 0)
+    {
+        plateRotor.run();
+    }
+}
+
+void water_refill()
+{
+    if (digitalRead(water_tank_float_sensor) == LOW)
+    {
+        while (digitalRead(water_tank_float_sensor) == LOW)
+        {
+            digitalWrite(water_refill_pump, HIGH);
+        }
+
+        digitalWrite(water_refill_pump, LOW);
+    }
+    else
+    {
+        digitalWrite(water_refill_pump, LOW);
+    }
+}
+
+void plate_cup_fwd_till_customer()
+{
+    pcHorizontal.moveTo(-7000);
+
+    while (pcHorizontal.distanceToGo() != 0)
+    {
+        pcHorizontal.run();
+    }
+
+    delay(100);
+
+    plate_vaccum_off();
+
+    while (digitalRead(plate_detect_ir) == HIGH && digitalRead(cup_detect_ir) == LOW)
+    {
+    }
+}
+
 /* puri 1 functions */
 
 void puri_push_s_catcher_open1_plate_cup_up()
@@ -475,6 +556,8 @@ void puri_pull_s_catcher_close1_plate_cup_fwd_till_masala()
 
 void puri_1_parallel()
 {
+    puri_barrel_rotor();
+    delay(100);
     puri_push_s_catcher_open1_plate_cup_up();
     delay(100);
     blower_plate_cup_down();
@@ -581,6 +664,8 @@ void puri_pull_drill_up_s_catcher_close1()
 
 void puri_2_parallel()
 {
+    puri_barrel_rotor();
+    delay(100);
     puri_push_s_catcher_open1();
     delay(100);
     blower_on_off_drill_down();
@@ -645,6 +730,7 @@ void puri_push_s_catcher_open1_masala_s_catcher_open2()
         }
 
         function_call_millis = 0;
+        
     }
     else
     {
@@ -689,10 +775,14 @@ void puri_pull_drill_up_s_catcher_close1_s_catcher_close2()
     puriDrill.setCurrentPosition(0);
     catcherOpener1.setCurrentPosition(0);
     catcherOpener2.setCurrentPosition(0);
+
+    plate_rotate();
 }
 
 void puri_3_to_5_parallel()
 {
+    puri_barrel_rotor();
+    delay(100);
     puri_push_s_catcher_open1_masala_s_catcher_open2();
     delay(100);
     blower_on_off_drill_down();
@@ -781,6 +871,8 @@ void drill_down_up_masala_s_catcher_open2_close2_pani()
         }
     }
 
+    plate_rotate();
+
     puriDrill.setCurrentPosition(0);
     catcherOpener2.setCurrentPosition(0);
 }
@@ -829,10 +921,14 @@ void s_catcher_close2()
         delay(200);
         catcherOpener2.setCurrentPosition(0); // Reset position at home
     }
+
+    plate_rotate();
 }
 
 void puri_6_parallel()
 {
+    puri_barrel_rotor();
+    delay(100);
     puri_push_s_catcher_open1_masala_s_catcher_open2(); // puri 6 @ st1 puri 4 --> out
     delay(100);
     blower_on_off_drill_down();
