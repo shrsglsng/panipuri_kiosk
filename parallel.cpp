@@ -109,6 +109,7 @@ AccelStepper plateRotor(AccelStepper::DRIVER, plate_rotor_step, plate_rotor_dir)
 
 void setup()
 {
+    
     pinMode(puri_catcher_home_sensor, INPUT_PULLUP); // Set sensor pin as input with pull-up resistor
     pinMode(ir, INPUT_PULLUP);
     pinMode(s_catcher_opener1_home_sensor, INPUT);
@@ -443,7 +444,7 @@ void plate_cup_fwd_till_customer()
 
     plate_vaccum_off();
 
-    while (digitalRead(plate_detect_ir) == HIGH && digitalRead(cup_detect_ir) == LOW)
+    while (digitalRead(plate_detect_ir) == LOW || digitalRead(cup_detect_ir) == LOW)
     {
     }
 }
@@ -452,6 +453,8 @@ void plate_cup_fwd_till_customer()
 
 void puri_push_s_catcher_open1_plate_cup_up()
 {
+
+    plate_vaccum_on();
 
     if (digitalRead(puri_catcher_home_sensor) == HIGH && digitalRead(s_catcher_opener1_home_sensor) == HIGH && digitalRead(plate_cup_vertical_home_sensor) == HIGH)
     {
